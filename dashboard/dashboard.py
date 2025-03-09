@@ -69,7 +69,7 @@ def create_rfm_df(df):
     return rfm_df
 
 # Read all data
-all_df = pd.read_csv("all_data.csv")
+all_df = pd.read_csv("dashboard/all_data.csv")
 
 # filter
 datetime_columns = ["order_purchase_timestamp", "order_approved_at"]

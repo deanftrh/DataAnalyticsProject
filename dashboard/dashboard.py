@@ -28,8 +28,22 @@ def create_status_order_df(df):
     
     return status_order_df
 
-#by payment type
+#bycity
+def create_bycity_df(df):
+    bystate_df = df.groupby(by="customer_city").agg({
+        "customer_unique_id": "nunique",
+        "payment_value": "sum",
+    })
+    bystate_df = bystate_df.reset_index()
+    bystate_df.rename(columns={
+        "customer_unique_id": "customer_count",
+        "payment_value": "revenue",
+    }, inplace=True)
+    
+    return bystate_df
 
+
+#by payment type
 def create_payment_type_df(df):
     payment_type_df = df.groupby(by='payment_type').agg({
         "order_id": "nunique",
@@ -43,14 +57,16 @@ def create_payment_type_df(df):
     
     return payment_type_df
 
-#bycity
-def create_bycity_df(df):
-    bystate_df = df.groupby(by="customer_city").customer_id.nunique().reset_index()
-    bystate_df.rename(columns={
-        "customer_id": "customer_count"
-    }, inplace=True)
+#by customer
+def create_customer_df(df):
+    customer_type_df = df.groupby(by="customer_unique_id").agg({
+    "order_id": "nunique",
+    "payment_value": "sum",
+    })
+    customer_type_df = customer_type_df.reset_index()
     
-    return bystate_df
+    return customer_type_df
+
 
 #RFM
 def create_rfm_df(df):
@@ -100,13 +116,14 @@ main_df = all_df[(all_df["order_purchase_timestamp"] >= str(start_date)) &
 daily_orders_df = create_daily_orders_df(main_df)
 bystatus_order_df = create_status_order_df(main_df)
 bypayment_type_df = create_payment_type_df(main_df)
+customer_type_df = create_customer_df(main_df)
 bycity_df = create_bycity_df(main_df)
 rfm_df = create_rfm_df(main_df)
 
 st.header('Dicoding Commerce Dashboard :sparkles:')
 
 # Overview Section
-st.subheader('Overview')
+st.subheader('Trend & Revenue Overview')
  
 col1, col2 = st.columns(2)
  
@@ -134,13 +151,48 @@ ax.tick_params(axis='x', labelsize=15)
  
 st.pyplot(fig)
 
-# Customer Analytics Section
-st.subheader('Customer Analytics')
+
+#Demographics
+st.subheader('Demographic')
+
+
+
+fig, ax = plt.subplots(figsize=(20, 10))
+sns.barplot(
+    x="revenue", 
+    y="customer_city",
+    data=bycity_df.sort_values(by="customer_count", ascending=False).head(10),
+    ax=ax
+)
+ax.set_title("Revenue of Customer by City", loc="center", fontsize=30)
+ax.set_ylabel(None)
+ax.set_xlabel(None)
+ax.tick_params(axis='y', labelsize=20)
+ax.tick_params(axis='x', labelsize=15)
+st.pyplot(fig)
+
+fig, ax = plt.subplots(figsize=(20, 10))
+sns.barplot(
+    x="customer_count", 
+    y="customer_city",
+    data=bycity_df.sort_values(by="customer_count", ascending=False).head(10),
+    ax=ax
+)
+
+ax.set_title("Number of Customer by City", loc="center", fontsize=30)
+ax.set_ylabel(None)
+ax.set_xlabel(None)
+ax.tick_params(axis='y', labelsize=20)
+ax.tick_params(axis='x', labelsize=15)
+st.pyplot(fig)
+
+
+# Customer Payment Section
+st.subheader('Payment Analytics')
 col1, col2 = st.columns(2)
  
 with col1:
     fig, ax = plt.subplots(figsize=(20, 10))
-
  
     sns.barplot(
         y="revenue", 
@@ -171,19 +223,50 @@ with col2:
     ax.tick_params(axis='y', labelsize=30)
     st.pyplot(fig)
  
-fig, ax = plt.subplots(figsize=(20, 10))
-sns.barplot(
-    x="customer_count", 
-    y="customer_city",
-    data=bycity_df.sort_values(by="customer_count", ascending=False).head(10),
-    ax=ax
-)
-ax.set_title("Number of Customer by City", loc="center", fontsize=30)
-ax.set_ylabel(None)
-ax.set_xlabel(None)
-ax.tick_params(axis='y', labelsize=20)
-ax.tick_params(axis='x', labelsize=15)
-st.pyplot(fig)
+
+# Top Customer Section
+st.subheader('Customer Analytics')
+col1, col2 = st.columns(2)
+
+# Salin dataframe untuk menghindari perubahan langsung ke data asli
+df_short = customer_type_df.copy()
+
+# Potong customer_unique_id agar hanya menampilkan 4 karakter pertama
+df_short["customer_unique_id"] = df_short["customer_unique_id"].str[:4]
+
+with col1:
+    fig, ax = plt.subplots(figsize=(20, 10))
+
+ 
+    sns.barplot(
+        y="payment_value", 
+        x="customer_unique_id",
+        data=df_short.sort_values(by="payment_value", ascending=False).head(5),
+        ax=ax
+    )
+    ax.set_title("Top 5 Customer by revenue", loc="center", fontsize=50)
+    ax.set_ylabel(None)
+    ax.set_xlabel(None)
+    ax.tick_params(axis='x', labelsize=35)
+    ax.tick_params(axis='y', labelsize=30)
+    st.pyplot(fig)
+ 
+with col2:
+    fig, ax = plt.subplots(figsize=(20, 10))
+
+ 
+    sns.barplot(
+        y="order_id", 
+        x="customer_unique_id",
+        data=df_short.sort_values(by="order_id", ascending=False).head(5),
+        ax=ax
+    )
+    ax.set_title("Top 5 Customer by orders", loc="center", fontsize=50)
+    ax.set_ylabel(None)
+    ax.set_xlabel(None)
+    ax.tick_params(axis='x', labelsize=35)
+    ax.tick_params(axis='y', labelsize=30)
+    st.pyplot(fig)
 
 
 # RFM Analytic
